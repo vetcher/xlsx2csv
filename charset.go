@@ -2,15 +2,21 @@ package xlsx2csv
 
 import (
 	"bytes"
+	"errors"
 	"regexp"
 	"strings"
+	"unicode/utf8"
 
+	"golang.org/x/net/html/charset"
 	"golang.org/x/text/encoding"
 	"golang.org/x/text/encoding/htmlindex"
 	"golang.org/x/text/encoding/unicode"
 )
 
-var xmlEncodingRE = regexp.MustCompile(`(?i)encoding\s*=\s*["']([^"']+)["']`)
+var (
+	xmlEncodingRE    = regexp.MustCompile(`(?i)encoding\s*=\s*["']([^"']+)["']`)
+	errInvalidEncoding = errors.New("invalid byte sequence for encoding")
+)
 
 func decodeXML(raw []byte, override encoding.Encoding) ([]byte, string, error) {
 	enc := override
@@ -21,18 +27,47 @@ func decodeXML(raw []byte, override encoding.Encoding) ([]byte, string, error) {
 		name = encodingName(enc)
 	}
 	if enc == nil {
-		return raw, "utf-8", nil
+		return validateAndStripUTF8BOM(raw)
 	}
 	norm := strings.ToLower(strings.TrimSpace(name))
 	if norm == "utf-8" || norm == "utf8" || norm == "" {
-		return raw, "utf-8", nil
+		return validateAndStripUTF8BOM(raw)
 	}
-	decoded, err := enc.NewDecoder().Bytes(raw)
+	decoded, err := decodeStrict(enc, raw)
 	if err != nil {
 		return nil, name, err
 	}
 	decoded = rewriteXMLDeclEncoding(decoded, "UTF-8")
 	return decoded, name, nil
+}
+
+func validateAndStripUTF8BOM(raw []byte) ([]byte, string, error) {
+	b := raw
+	if bytes.HasPrefix(b, []byte{0xEF, 0xBB, 0xBF}) {
+		b = b[3:]
+	}
+	if !utf8.Valid(b) {
+		return nil, "utf-8", errInvalidEncoding
+	}
+	return b, "utf-8", nil
+}
+
+func decodeStrict(enc encoding.Encoding, raw []byte) ([]byte, error) {
+	decoded, err := enc.NewDecoder().Bytes(raw)
+	if err != nil {
+		return nil, err
+	}
+	if !utf8.Valid(decoded) {
+		return nil, errInvalidEncoding
+	}
+	reencoded, err := enc.NewEncoder().Bytes(decoded)
+	if err != nil {
+		return nil, err
+	}
+	if !bytes.Equal(reencoded, raw) {
+		return nil, errInvalidEncoding
+	}
+	return decoded, nil
 }
 
 func detectEncoding(raw []byte) (encoding.Encoding, string) {
@@ -43,6 +78,9 @@ func detectEncoding(raw []byte) (encoding.Encoding, string) {
 		if enc, err := htmlindex.Get(decl); err == nil {
 			return enc, decl
 		}
+	}
+	if enc, name, _ := charset.DetermineEncoding(raw, "application/xml"); enc != nil {
+		return enc, name
 	}
 	return nil, "utf-8"
 }
