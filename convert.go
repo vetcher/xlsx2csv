@@ -1,6 +1,7 @@
 package xlsx2csv
 
 import (
+	"errors"
 	"fmt"
 	"io"
 
@@ -69,9 +70,12 @@ func Convert(r io.Reader, opts ...Option) ([][]string, error) {
 		return nil, decodeFileError(err)
 	}
 
-	rows, _, err := ooxml.SheetToRows(sheetUTF8, shared)
+	rows, cellErrs, err := sheetToRowsWithErrors(sheetUTF8, shared, sheet.Name, cfg)
 	if err != nil {
 		return nil, &ErrorList{Errs: []error{err}}
+	}
+	if len(cellErrs) > 0 {
+		return rows, &ErrorList{Errs: cellErrs}
 	}
 	return rows, nil
 }
@@ -125,4 +129,42 @@ func decodeFileError(cause error) error {
 		Msg:   "decode XML",
 		Cause: cause,
 	}}}
+}
+
+var errErrorLimitReached = errors.New("xlsx2csv: error limit reached")
+
+func sheetToRowsWithErrors(utf8 []byte, shared []string, sheetName string, cfg config) ([][]string, []error, error) {
+	var placed []ooxml.PlacedCell
+	var errs []error
+
+	streamErr := ooxml.StreamSheet(utf8, shared, func(row, col int, text string, kind ooxml.CellKind) error {
+		switch kind {
+		case ooxml.KindFormula, ooxml.KindError, ooxml.KindUnsupported:
+			placed = append(placed, ooxml.PlacedCell{Row: row, Col: col, Text: cfg.placeholder})
+			errs = append(errs, cellErrorFromKind(sheetName, row, col, kind))
+			if cfg.errorLimit != -1 && len(errs) >= cfg.errorLimit {
+				return errErrorLimitReached
+			}
+			return nil
+		}
+		placed = append(placed, ooxml.PlacedCell{Row: row, Col: col, Text: text})
+		return nil
+	})
+	if streamErr != nil && !errors.Is(streamErr, errErrorLimitReached) {
+		return nil, nil, streamErr
+	}
+
+	return ooxml.DensifyPlaced(placed), errs, nil
+}
+
+func cellErrorFromKind(sheetName string, row, col int, kind ooxml.CellKind) *CellError {
+	ref := CellRef{Sheet: sheetName, Row: row, Col: col}
+	switch kind {
+	case ooxml.KindFormula:
+		return &CellError{Ref: ref, Code: ErrFormulaNotSupported, Msg: "formula not supported"}
+	case ooxml.KindError:
+		return &CellError{Ref: ref, Code: ErrUnsupportedType, Msg: "cell error value"}
+	default:
+		return &CellError{Ref: ref, Code: ErrUnsupportedType, Msg: "unsupported cell type"}
+	}
 }

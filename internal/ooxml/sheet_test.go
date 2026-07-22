@@ -52,14 +52,18 @@ func TestSheetToRows_FormulaFault(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(rows) != 0 && rows[0] != nil {
-		t.Fatalf("formula cell should not appear in rows, got %#v", rows)
+	if len(rows) != 2 {
+		t.Fatalf("rows: got %#v", rows)
+	}
+	wantRows := [][]string{nil, {"", ""}}
+	if !reflect.DeepEqual(rows, wantRows) {
+		t.Fatalf("got %#v, want %#v", rows, wantRows)
 	}
 	if len(faults) != 1 {
 		t.Fatalf("faults: got %d, want 1: %#v", len(faults), faults)
 	}
-	want := ooxml.SheetCellFault{Row: 2, Col: 2, Kind: ooxml.KindFormula}
-	if faults[0] != want {
-		t.Fatalf("fault: got %#v, want %#v", faults[0], want)
+	wantFault := ooxml.SheetCellFault{Row: 2, Col: 2, Kind: ooxml.KindFormula}
+	if faults[0] != wantFault {
+		t.Fatalf("fault: got %#v, want %#v", faults[0], wantFault)
 	}
 }

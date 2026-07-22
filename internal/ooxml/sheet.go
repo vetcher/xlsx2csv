@@ -201,42 +201,28 @@ func cellText(cellType, v, inline string, shared []string) (text string, kind Ce
 	}
 }
 
-// SheetToRows parses sheet XML into dense row slices and cell faults.
-func SheetToRows(utf8 []byte, shared []string) ([][]string, []SheetCellFault, error) {
-	type placed struct {
-		row, col int
-		text     string
-	}
-	var placedCells []placed
-	var faults []SheetCellFault
+// PlacedCell is a cell value at 1-based row and column coordinates.
+type PlacedCell struct {
+	Row, Col int
+	Text     string
+}
 
-	err := StreamSheet(utf8, shared, func(row, col int, text string, kind CellKind) error {
-		switch kind {
-		case KindFormula, KindError, KindUnsupported:
-			faults = append(faults, SheetCellFault{Row: row, Col: col, Kind: kind})
-			return nil
-		}
-		placedCells = append(placedCells, placed{row: row, col: col, text: text})
-		return nil
-	})
-	if err != nil {
-		return nil, nil, err
-	}
-
+// DensifyPlaced builds a dense row matrix from sparse cell placements.
+func DensifyPlaced(placedCells []PlacedCell) [][]string {
 	if len(placedCells) == 0 {
-		return nil, faults, nil
+		return nil
 	}
 
 	maxRow := 0
 	rowCols := make(map[int]map[int]string)
 	for _, c := range placedCells {
-		if c.row > maxRow {
-			maxRow = c.row
+		if c.Row > maxRow {
+			maxRow = c.Row
 		}
-		if rowCols[c.row] == nil {
-			rowCols[c.row] = make(map[int]string)
+		if rowCols[c.Row] == nil {
+			rowCols[c.Row] = make(map[int]string)
 		}
-		rowCols[c.row][c.col] = c.text
+		rowCols[c.Row][c.Col] = c.Text
 	}
 
 	rows := make([][]string, maxRow)
@@ -260,6 +246,29 @@ func SheetToRows(utf8 []byte, shared []string) ([][]string, []SheetCellFault, er
 		}
 		rows[r-1] = row
 	}
+	return rows
+}
+
+// SheetToRows parses sheet XML into dense row slices and cell faults.
+func SheetToRows(utf8 []byte, shared []string) ([][]string, []SheetCellFault, error) {
+	var placedCells []PlacedCell
+	var faults []SheetCellFault
+
+	err := StreamSheet(utf8, shared, func(row, col int, text string, kind CellKind) error {
+		switch kind {
+		case KindFormula, KindError, KindUnsupported:
+			faults = append(faults, SheetCellFault{Row: row, Col: col, Kind: kind})
+			placedCells = append(placedCells, PlacedCell{Row: row, Col: col, Text: ""})
+			return nil
+		}
+		placedCells = append(placedCells, PlacedCell{Row: row, Col: col, Text: text})
+		return nil
+	})
+	if err != nil {
+		return nil, nil, err
+	}
+
+	rows := DensifyPlaced(placedCells)
 	return rows, faults, nil
 }
 
