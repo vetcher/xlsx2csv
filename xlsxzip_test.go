@@ -24,7 +24,7 @@ func buildXLSX(parts map[string][]byte) []byte {
 	return buf.Bytes()
 }
 
-func fixtureTwoSheets(t *testing.T) []byte {
+func fixtureTwoSheets(t testing.TB) []byte {
 	t.Helper()
 	return minimalDataXLSX()
 }
