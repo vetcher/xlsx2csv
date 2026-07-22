@@ -16,9 +16,11 @@ Go library: convert `.xlsx` workbooks to `[][]string` with typed cell errors and
 
 - `.xls` / BIFF
 - Formula evaluation or accepting formula cells as data
+- Merged cells (`mergeCells`) — rejected with typed error
 - Number-format / locale display rendering (dates stay numeric literals)
 - Writing workbooks or emitting `.csv` files
 - True streaming of multi-GB sheets without buffering the zip entry (full entry buffer is OK)
+- Trimming accidental far-away whitespace cells from the used range (they widen the dense grid)
 
 ## Approach
 

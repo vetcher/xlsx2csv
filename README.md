@@ -82,6 +82,10 @@ if err != nil {
 
 Typed codes include `ErrFormulaNotSupported`, `ErrDecode`, `ErrUnsupportedType`, `ErrCorrupt`, `ErrSheetNotFound`, and `ErrInvalidPackage`.
 
+Merged cells (`mergeCells` in the worksheet) are rejected as `ErrUnsupportedType` with message `merged cells not supported` and `rows == nil`.
+
+Sparse “accidental” cells (for example a space typed far from the table) are kept: the grid extends to that row/column, empty middle rows are `nil`, and empty cells on the far row are `""`.
+
 ## Benchmarks
 
 See [docs/benchmarks.md](docs/benchmarks.md) for benchmark commands and allocation notes.
