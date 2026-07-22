@@ -28,27 +28,9 @@ func Convert(r io.Reader, opts ...Option) ([][]string, error) {
 		return nil, &ErrorList{Errs: []error{err}}
 	}
 
-	wbRaw, err := pkg.ReadPart(workbookPath)
+	sheets, _, err := loadWorkbookSheets(pkg, cfg.enc)
 	if err != nil {
-		return nil, &ErrorList{Errs: []error{err}}
-	}
-	wbUTF8, _, err := decodeXML(wbRaw, cfg.enc)
-	if err != nil {
-		return nil, decodeFileError(err)
-	}
-
-	relsRaw, err := pkg.ReadPart(workbookRelsPath)
-	if err != nil {
-		return nil, &ErrorList{Errs: []error{err}}
-	}
-	relsUTF8, _, err := decodeXML(relsRaw, cfg.enc)
-	if err != nil {
-		return nil, decodeFileError(err)
-	}
-
-	sheets, err := ooxml.ParseWorkbook(wbUTF8, relsUTF8)
-	if err != nil {
-		return nil, &ErrorList{Errs: []error{err}}
+		return nil, err
 	}
 
 	sheet, err := selectSheet(sheets, cfg)
@@ -78,6 +60,32 @@ func Convert(r io.Reader, opts ...Option) ([][]string, error) {
 		return rows, &ErrorList{Errs: cellErrs}
 	}
 	return rows, nil
+}
+
+func loadWorkbookSheets(pkg *ooxml.Package, enc encoding.Encoding) ([]ooxml.SheetInfo, string, error) {
+	wbRaw, err := pkg.ReadPart(workbookPath)
+	if err != nil {
+		return nil, "", &ErrorList{Errs: []error{err}}
+	}
+	wbUTF8, encName, err := decodeXML(wbRaw, enc)
+	if err != nil {
+		return nil, "", decodeFileError(err)
+	}
+
+	relsRaw, err := pkg.ReadPart(workbookRelsPath)
+	if err != nil {
+		return nil, "", &ErrorList{Errs: []error{err}}
+	}
+	relsUTF8, _, err := decodeXML(relsRaw, enc)
+	if err != nil {
+		return nil, "", decodeFileError(err)
+	}
+
+	sheets, err := ooxml.ParseWorkbook(wbUTF8, relsUTF8)
+	if err != nil {
+		return nil, "", &ErrorList{Errs: []error{err}}
+	}
+	return sheets, encName, nil
 }
 
 func selectSheet(sheets []ooxml.SheetInfo, cfg config) (*ooxml.SheetInfo, error) {
