@@ -201,17 +201,6 @@ func cellText(cellType, v, inline string, shared []string) (text string, kind Ce
 	}
 }
 
-// ParseSheet streams the sheet and returns dense rows plus per-cell metadata.
-func ParseSheet(utf8 []byte, shared []string) (rows [][]string, cells []CellValue, err error) {
-	var faults []SheetCellFault
-	rows, faults, err = SheetToRows(utf8, shared)
-	if err != nil {
-		return nil, nil, err
-	}
-	_ = faults
-	return rows, cells, nil
-}
-
 // SheetToRows parses sheet XML into dense row slices and cell faults.
 func SheetToRows(utf8 []byte, shared []string) ([][]string, []SheetCellFault, error) {
 	type placed struct {

@@ -38,3 +38,28 @@ func TestSheetToRows_LiteralsAndShared(t *testing.T) {
 		t.Fatalf("got %#v", rows)
 	}
 }
+
+func TestSheetToRows_FormulaFault(t *testing.T) {
+	sheetXML := []byte(`<?xml version="1.0"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <sheetData>
+    <row r="1">
+      <c r="B2"><f>SUM(A1:A9)</f><v>42</v></c>
+    </row>
+  </sheetData>
+</worksheet>`)
+	rows, faults, err := ooxml.SheetToRows(sheetXML, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rows) != 0 && rows[0] != nil {
+		t.Fatalf("formula cell should not appear in rows, got %#v", rows)
+	}
+	if len(faults) != 1 {
+		t.Fatalf("faults: got %d, want 1: %#v", len(faults), faults)
+	}
+	want := ooxml.SheetCellFault{Row: 2, Col: 2, Kind: ooxml.KindFormula}
+	if faults[0] != want {
+		t.Fatalf("fault: got %#v, want %#v", faults[0], want)
+	}
+}
