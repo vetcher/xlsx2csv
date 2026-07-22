@@ -2,6 +2,7 @@ package xlsx2csv_test
 
 import (
 	"bytes"
+	"strings"
 	"testing"
 
 	"github.com/vetcher/xlsx2csv"
@@ -18,6 +19,10 @@ func TestInspect_SheetList(t *testing.T) {
 	}
 	if meta.Sheets[0].Name != "one" || meta.Sheets[1].Index != 1 {
 		t.Fatalf("%#v", meta.Sheets)
+	}
+	sh2 := meta.Sheets[1]
+	if sh2.Name != "two" || sh2.Path != "xl/worksheets/sheet2.xml" || !sh2.Hidden {
+		t.Fatalf("sheet two %#v", sh2)
 	}
 }
 
@@ -39,5 +44,8 @@ func TestInspect_ReportsEncodingName(t *testing.T) {
 	}
 	if meta.EncodingName == "" {
 		t.Fatal("empty encoding name")
+	}
+	if !strings.Contains(meta.EncodingName, "1251") {
+		t.Fatalf("encoding name %q want windows-1251", meta.EncodingName)
 	}
 }

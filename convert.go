@@ -25,7 +25,7 @@ func Convert(r io.Reader, opts ...Option) ([][]string, error) {
 	}
 	pkg, err := ooxml.Open(data)
 	if err != nil {
-		return nil, &ErrorList{Errs: []error{err}}
+		return nil, invalidPackageError(err)
 	}
 
 	sheets, _, err := loadWorkbookSheets(pkg, cfg.enc)
@@ -45,7 +45,7 @@ func Convert(r io.Reader, opts ...Option) ([][]string, error) {
 
 	sheetRaw, err := pkg.ReadPart(sheet.Path)
 	if err != nil {
-		return nil, &ErrorList{Errs: []error{err}}
+		return nil, corruptFileError("read worksheet", err)
 	}
 	sheetUTF8, _, err := decodeXML(sheetRaw, cfg.enc)
 	if err != nil {
@@ -54,7 +54,7 @@ func Convert(r io.Reader, opts ...Option) ([][]string, error) {
 
 	rows, cellErrs, err := sheetToRowsWithErrors(sheetUTF8, shared, sheet.Name, cfg)
 	if err != nil {
-		return nil, &ErrorList{Errs: []error{err}}
+		return nil, corruptFileError("parse worksheet", err)
 	}
 	if len(cellErrs) > 0 {
 		return rows, &ErrorList{Errs: cellErrs}
@@ -65,7 +65,7 @@ func Convert(r io.Reader, opts ...Option) ([][]string, error) {
 func loadWorkbookSheets(pkg *ooxml.Package, enc encoding.Encoding) ([]ooxml.SheetInfo, string, error) {
 	wbRaw, err := pkg.ReadPart(workbookPath)
 	if err != nil {
-		return nil, "", &ErrorList{Errs: []error{err}}
+		return nil, "", corruptFileError("read workbook", err)
 	}
 	wbUTF8, encName, err := decodeXML(wbRaw, enc)
 	if err != nil {
@@ -74,7 +74,7 @@ func loadWorkbookSheets(pkg *ooxml.Package, enc encoding.Encoding) ([]ooxml.Shee
 
 	relsRaw, err := pkg.ReadPart(workbookRelsPath)
 	if err != nil {
-		return nil, "", &ErrorList{Errs: []error{err}}
+		return nil, "", corruptFileError("read workbook relationships", err)
 	}
 	relsUTF8, _, err := decodeXML(relsRaw, enc)
 	if err != nil {
@@ -83,7 +83,7 @@ func loadWorkbookSheets(pkg *ooxml.Package, enc encoding.Encoding) ([]ooxml.Shee
 
 	sheets, err := ooxml.ParseWorkbook(wbUTF8, relsUTF8)
 	if err != nil {
-		return nil, "", &ErrorList{Errs: []error{err}}
+		return nil, "", corruptFileError("parse workbook", err)
 	}
 	return sheets, encName, nil
 }
@@ -126,7 +126,7 @@ func loadSharedStrings(pkg *ooxml.Package, enc encoding.Encoding) ([]string, err
 	}
 	shared, err := ooxml.ParseSharedStrings(utf8)
 	if err != nil {
-		return nil, &ErrorList{Errs: []error{err}}
+		return nil, corruptFileError("parse shared strings", err)
 	}
 	return shared, nil
 }
@@ -135,6 +135,22 @@ func decodeFileError(cause error) error {
 	return &ErrorList{Errs: []error{&CellError{
 		Code:  ErrDecode,
 		Msg:   "decode XML",
+		Cause: cause,
+	}}}
+}
+
+func invalidPackageError(cause error) error {
+	return &ErrorList{Errs: []error{&CellError{
+		Code:  ErrInvalidPackage,
+		Msg:   "invalid XLSX package",
+		Cause: cause,
+	}}}
+}
+
+func corruptFileError(msg string, cause error) error {
+	return &ErrorList{Errs: []error{&CellError{
+		Code:  ErrCorrupt,
+		Msg:   msg,
 		Cause: cause,
 	}}}
 }

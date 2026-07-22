@@ -48,7 +48,7 @@ for _, sh := range meta.Sheets {
 |--------|---------|
 | `WithSheetIndex(i int)` | Select worksheet by zero-based index |
 | `WithSheetName(name string)` | Select worksheet by name |
-| `WithEncoding(enc encoding.Encoding)` | Override XML encoding (default: UTF-8 or declared `encoding` in XML) |
+| `WithEncoding(enc encoding.Encoding)` | Override XML encoding (default: BOM sniff, then XML `encoding` declaration, then byte-sample detection, else UTF-8) |
 | `WithErrorLimit(n int)` | Max cell-level errors before stopping (`-1` = unlimited; `0` treated as `1`) |
 | `WithErrorPlaceholder(s string)` | Text placed in cells that error (e.g. formulas) |
 

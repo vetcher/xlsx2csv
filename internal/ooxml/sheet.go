@@ -191,6 +191,11 @@ func cellText(cellType, v, inline string, shared []string) (text string, kind Ce
 		return "", KindFormula, nil
 	case "e":
 		return "", KindError, nil
+	case "n":
+		if v == "" {
+			return "", KindBlank, nil
+		}
+		return v, KindNumber, nil
 	case "":
 		if v == "" {
 			return "", KindBlank, nil

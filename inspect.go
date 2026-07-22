@@ -29,7 +29,7 @@ func Inspect(r io.Reader, opts ...Option) (Meta, error) {
 	}
 	pkg, err := ooxml.Open(data)
 	if err != nil {
-		return Meta{}, &ErrorList{Errs: []error{err}}
+		return Meta{}, invalidPackageError(err)
 	}
 
 	sheets, encName, err := loadWorkbookSheets(pkg, cfg.enc)

@@ -39,6 +39,28 @@ func TestSheetToRows_LiteralsAndShared(t *testing.T) {
 	}
 }
 
+func TestSheetToRows_ExplicitNumericType(t *testing.T) {
+	sheetXML := []byte(`<?xml version="1.0"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <sheetData>
+    <row r="1">
+      <c r="A1" t="n"><v>1.50</v></c>
+    </row>
+  </sheetData>
+</worksheet>`)
+	rows, faults, err := ooxml.SheetToRows(sheetXML, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(faults) != 0 {
+		t.Fatalf("faults %#v", faults)
+	}
+	want := [][]string{{"1.50"}}
+	if !reflect.DeepEqual(rows, want) {
+		t.Fatalf("got %#v want %#v", rows, want)
+	}
+}
+
 func TestSheetToRows_FormulaFault(t *testing.T) {
 	sheetXML := []byte(`<?xml version="1.0"?>
 <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
