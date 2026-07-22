@@ -1,1 +1,1 @@
-# xlsx2csv
+Go library converting `.xlsx` to `[][]string`.
