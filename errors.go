@@ -38,11 +38,17 @@ func colLetters(col int) string {
 type ErrCode int
 
 const (
+	// ErrFormulaNotSupported is returned for formula cells.
 	ErrFormulaNotSupported ErrCode = iota
+	// ErrDecode indicates XML decoding failed.
 	ErrDecode
+	// ErrUnsupportedType is returned for unsupported cell types or error values.
 	ErrUnsupportedType
+	// ErrCorrupt indicates malformed workbook or sheet data.
 	ErrCorrupt
+	// ErrSheetNotFound means the requested sheet does not exist.
 	ErrSheetNotFound
+	// ErrInvalidPackage means the input is not a valid XLSX zip package.
 	ErrInvalidPackage
 )
 
