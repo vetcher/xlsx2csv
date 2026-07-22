@@ -3,12 +3,16 @@ package ooxml
 import (
 	"bytes"
 	"encoding/xml"
+	"errors"
 	"fmt"
 	"io"
 	"strconv"
 	"strings"
 	"unicode"
 )
+
+// ErrMergedCells is returned when a worksheet contains merged cell ranges.
+var ErrMergedCells = errors.New("ooxml: merged cells not supported")
 
 // CellKind classifies a worksheet cell value.
 type CellKind int
@@ -86,6 +90,8 @@ func StreamSheet(utf8 []byte, shared []string, fn CellHandler) error {
 				continue
 			}
 			switch local {
+			case "mergeCells", "mergeCell":
+				return ErrMergedCells
 			case "sheetData":
 				inSheetData = true
 			case "c":

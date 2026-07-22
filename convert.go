@@ -54,6 +54,14 @@ func Convert(r io.Reader, opts ...Option) ([][]string, error) {
 
 	rows, cellErrs, err := sheetToRowsWithErrors(sheetUTF8, shared, sheet.Name, cfg)
 	if err != nil {
+		if errors.Is(err, ooxml.ErrMergedCells) {
+			return nil, &ErrorList{Errs: []error{&CellError{
+				Ref:   CellRef{Sheet: sheet.Name},
+				Code:  ErrUnsupportedType,
+				Msg:   "merged cells not supported",
+				Cause: err,
+			}}}
+		}
 		return nil, corruptFileError("parse worksheet", err)
 	}
 	if len(cellErrs) > 0 {
